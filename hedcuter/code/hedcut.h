@@ -26,14 +26,25 @@ public:
 
 	bool build(cv::Mat & input_image, int n);
 
-	const std::list<HedcutDisk> & getDisks() const { return disks;  }
+	const std::list<HedcutDisk> & getDisks() const 
+	{
+        return disks;
+    }
+	
+	const cv::Scalar& getBackgroundColor() const
+	{
+        return backgroundColor;
+    }
 
-	//cvf control flags
-	int cvt_iteration_limit; //max number of iterations when building cvf
-	float max_site_displacement; //max tolerable site displacement in each iteration.
-	bool average_termination;	//ture when the algorithm terminates with average displacement, not max displacement
-
-	bool debug; //if true, debug information will be excuted
+	// CVT control flags
+	int cvt_iteration_limit;     // max number of iterations when building cvf
+	float max_site_displacement; // max tolerable site displacement in each iteration.
+	bool average_termination;	 // true when the algorithm terminates with average displacement, not max displacement
+	bool useOpenGL;              // use OpenGL to create the Voronoi diagram at each timestep.
+    float defaultRadius;         // default size that we want disks to be
+    float diskScalingFactor;     // factor to scale the disk size by
+    //bool scaleDisks;           // scale the disks according to how big their
+	bool debug;                  //if true, debug information will be excuted
 
 private:
 
@@ -41,4 +52,5 @@ private:
 	void create_disks(cv::Mat & img, CVT & cvt);
 
 	std::list<HedcutDisk> disks;
+    cv::Scalar backgroundColor;
 };

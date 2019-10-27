@@ -8,14 +8,26 @@ Hedcut::Hedcut()
 	cvt_iteration_limit = 100; //max number of iterations when building cvf
 	max_site_displacement = 1.01f; //max tolerable site displacement in each iteration.
 	average_termination = false;
-
+    useOpenGL = false;
 	debug = false;
+    //scaleDisks = false;
+    diskScalingFactor = 0.0f;
+    defaultRadius = 1.0f;
+    //bool scaleDisks;            
+    // scale the disks according to how big their
+    
+    // Set the backgroundColor
+    backgroundColor.val[0] = 255;
+    backgroundColor.val[1] = 255;
+    backgroundColor.val[2] = 255;
+    backgroundColor.val[3] = 0;
 }
 
 
 
 bool Hedcut::build(cv::Mat & input_image, int n)
 {
+    std::cout << "Running Hedcut::build" << std::endl;
 	cv::Mat grayscale;
 	cv::cvtColor(input_image, grayscale, cv::COLOR_BGR2GRAY);
 
@@ -30,6 +42,7 @@ bool Hedcut::build(cv::Mat & input_image, int n)
 	cvt.max_site_displacement = this->max_site_displacement;
 	cvt.average_termination = this->average_termination;
 	cvt.debug = this->debug;
+    cvt.useOpenGL = this->useOpenGL;
 
 	clock_t startTime, endTime;
 	startTime = clock();
@@ -51,6 +64,7 @@ bool Hedcut::build(cv::Mat & input_image, int n)
 
 void Hedcut::sample_initial_points(cv::Mat & img, int n, std::vector<cv::Point2d> & pts)
 {
+    std::cout << "Running Hedcut::sample_initial_points" << std::endl;
 	//create n points that spread evenly that are in areas of black points...
 	int count = 0;
 
@@ -93,7 +107,51 @@ void Hedcut::create_disks(cv::Mat & img, CVT & cvt)
 	cv::cvtColor(img, grayscale, cv::COLOR_BGR2GRAY);
 
 	disks.clear();
-
+    
+    double totalIntensity = 0.0;
+    double totalPixels = 1.0 * grayscale.rows * grayscale.cols;
+    
+    double totalR = 0.0;
+    double totalG = 0.0;
+    double totalB = 0.0;
+    
+    for(int grayRow = 0; grayRow < grayscale.rows; grayRow++)
+    {
+        for(int grayCol = 0; grayCol < grayscale.cols; grayCol++)
+        {
+            cv::Vec3b &colorPixel = img.at<cv::Vec3b>(grayRow, grayCol);
+            totalR += static_cast<double>(colorPixel[2]);
+            totalG += static_cast<double>(colorPixel[1]);
+            totalB += static_cast<double>(colorPixel[0]);
+ 
+            totalIntensity += (1.0 * grayscale.at<uchar>(grayRow, grayCol));
+        }
+    }
+    
+    double avgPixelIntensity = totalIntensity / totalPixels;
+    double avgR = totalR / totalPixels;
+    double avgG = totalG / totalPixels;
+    double avgB = totalB / totalPixels;
+    
+    backgroundColor.val[0] = static_cast<uchar>(avgR);
+    backgroundColor.val[1] = static_cast<uchar>(avgG);
+    backgroundColor.val[2] = static_cast<uchar>(avgB);
+    
+    
+    float maxRadius = 0.0f;
+    
+    for(auto& cell : cvt.getCells())
+    {
+        float currentRadius = sqrt(1.0f * cell.coverage.size()) / 2.0f;
+        std::cout << "Current disk radius (actual) = " << currentRadius << std::endl;
+        if(currentRadius > maxRadius)
+        {
+            maxRadius = currentRadius;
+        }
+    }
+    
+    std::cout << "Max disk radius (actual) = " << maxRadius << std::endl;
+    
 	//create disks from cvt
 	for (auto& cell : cvt.getCells())
 	{
@@ -118,7 +176,16 @@ void Hedcut::create_disks(cv::Mat & img, CVT & cvt)
 		disk.center.x = cell.site.y; //x = col
 		disk.center.y = cell.site.x; //y = row
 		disk.color = cv::Scalar::all(0); //black
-		disk.radius = 1;
+     
+
+        //disk.radius = 1; 
+        float currentRadius = sqrt(1.0f * cell.coverage.size()) / 2;
+        
+        disk.radius = defaultRadius + (((maxRadius - currentRadius) / maxRadius) * diskScalingFactor);
+        //sqrt(cell.coverage.size() * 1.0f) / 3;
+        
+        std::cout << "Output radius = " << disk.radius << ", disk radius (actual) = " << currentRadius <<
+            ", diskScalingFactor = " << diskScalingFactor << std::endl;
 
 		//remember
 		this->disks.push_back(disk);

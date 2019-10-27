@@ -21,6 +21,8 @@
 #include <opencv2/video/video.hpp>
 #include <opencv2/features2d/features2d.hpp>
 
+#include "vorgpu.hpp"
+
 struct VorCell
 {
 	VorCell(){}
@@ -61,6 +63,7 @@ public:
 	float max_site_displacement; //max tolerable site displacement in each iteration.
 	bool average_termination;
 	bool debug;
+    bool useOpenGL;
 
 private:
 
@@ -136,4 +139,29 @@ private:
 		}
 		return max_offset;
 	}
+	
+    void updateCoverageForVorGPU(cv::Mat& mat)
+    {
+        for (auto& c : this->cells)
+        {
+            c.coverage.clear();
+        }
+        
+		for (int row = 0; row < mat.rows; row++) //x is row
+		{
+			for (int col = 0; col < mat.cols; col++) //y is column
+			{
+                cv::Vec3b &pixelVal = mat.at<cv::Vec3b>(row, col);
+                uchar pixelArr[3] = {pixelVal[2], pixelVal[1], pixelVal[0]};
+                int arrayIndex;
+                colorToIndex(this->cells.size(), pixelArr, arrayIndex);
+                /*
+                std::cout << "Row = " << row << ", Col = " << col << ", RGB = " << static_cast<int>(pixelArr[0]) << "-" <<
+                    static_cast<int>(pixelArr[1]) << "-" << static_cast<int>(pixelArr[2])  <<
+                    ", computed index = " << arrayIndex << std::endl;
+                */
+                this->cells[arrayIndex].coverage.push_back(cv::Point(row, col));
+			}
+		}
+    }
 };

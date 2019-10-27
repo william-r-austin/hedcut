@@ -1,4 +1,5 @@
 #include "wcvt.h"
+#include "vorgpu.hpp"
 #include <iostream>
 
 std::vector<VorCell> CVT::cells;
@@ -38,7 +39,6 @@ void CVT::vor(cv::Mat &  img)
 			if (c.site.y<0 || c.site.y>res.width)
 				std::cout << "! Warning: c.site.y=" << c.site.y << std::endl;
 		}
-
 
 		cv::Point pix((int)c.site.x, (int)c.site.y);
 		float d = color2dist(resizedImg, pix);
@@ -135,6 +135,7 @@ void CVT::vor(cv::Mat &  img)
 
 void CVT::compute_weighted_cvt(cv::Mat &  img, std::vector<cv::Point2d> & sites)
 {
+    std::cout << "Running CVT::compute_weighted_cvt" << std::endl;
 	//inint
 	int site_size = sites.size();
 	this->cells.resize(site_size);
@@ -145,15 +146,58 @@ void CVT::compute_weighted_cvt(cv::Mat &  img, std::vector<cv::Point2d> & sites)
 
 	float max_dist_moved = FLT_MAX;
 
+    VorGPU vorGPU(img.size().width, img.size().height);
+
+    /*
+    for(int m = 0; m < 13; m++)
+    {
+        uchar colorArr[3];
+        indexToColor(13, colorArr, m);
+        
+        int computedIndex;
+        colorToIndex(13, colorArr, computedIndex);
+        
+        std::cout << "Color <=> Index test, m = " << m << ", color = [" << static_cast<int>(colorArr[0]) << ", " <<
+            static_cast<int>(colorArr[1]) << ", " << static_cast<int>(colorArr[2]) << "], computed = " << computedIndex << std::endl;
+    }*/
+    
 	int iteration = 0;
+    
+    // For OpenGL processing;
+    vector<cv::Point2d> centerPoints;
+    
 	do
 	{
-		vor(img); //compute voronoi
+        // Do the OpenGL stuff
+        if(useOpenGL) 
+        {
+            cv::Mat vorDiagram(img.size().height, img.size().width, CV_8UC3);
+            centerPoints.clear();
+            
+            for(auto& k : cells)
+            {
+                cv::Point2d newPoint(k.site.x, k.site.y);
+                centerPoints.push_back(newPoint);
+            }
+            
+            vorGPU.updateCenterPoints(centerPoints);
+            vorGPU.refreshVoronoiDiagram(vorDiagram);
+            updateCoverageForVorGPU(vorDiagram);
+            
+            cv::imshow("OpenGL Voronoi Diagram", vorDiagram);
+            cv::waitKey(5);
+        }
+        else 
+        {
+            vor(img); //compute voronoi
+        }
+        
 		max_dist_moved = move_sites(img);
 
 		if (debug) std::cout << "[" << iteration << "] max dist moved = " << max_dist_moved << std::endl;
 		iteration++;
-	} while (max_dist_moved>max_site_displacement && iteration < this->iteration_limit);
+	} 
+	while (max_dist_moved>max_site_displacement && iteration < this->iteration_limit);
 
 	//if (debug) cv::waitKey();
 }

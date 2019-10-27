@@ -36,8 +36,7 @@ include_directories(
 set(APP_NAME hedcuter)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR})
 
-set(HEDCUT_SRC hedcut.cpp   main.cpp    wcvt.cpp
-)
+set(HEDCUT_SRC hedcut.cpp   main.cpp   wcvt.cpp   vorgpu.cpp)
 
 add_executable(${APP_NAME} ${HEDCUT_SRC})
 #add_dependencies(${APP_NAME})

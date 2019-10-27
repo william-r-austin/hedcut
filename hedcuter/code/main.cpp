@@ -1,6 +1,11 @@
 #include "hedcut.h"
 #include "simple_svg_1.0.0.hpp"
 
+// These are the new includes for OpenGL
+#include <GL/freeglut.h>
+#include <GL/gl.h>
+#include <GL/glu.h>
+
 using namespace std;
 
 //This variable is defined in wcvt.h
@@ -19,13 +24,149 @@ inline string getImageName(const string & img_name)
 	return output;
 }
 
+void randomColor(float (&colorArr)[3])
+{
+    for(size_t i = 0; i < 3; i++)
+    {
+        colorArr[i] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+    }
+}
+
+
+void myGlutDisplayFunc(void)
+{
+        glClearColor(0.f, 1.f, 0.f, 1.f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        float triColor[3];
+        glBegin(GL_TRIANGLES);
+        float scale = 400.0f;
+        int totalPoints = 200;
+        
+        // glEnableClientState(GL_VERTEX_ARRAY);
+        
+    
+        for(int k = 0; k < totalPoints; k++)
+        {
+            randomColor(triColor);
+            glColor3f(triColor[0], triColor[1], triColor[2]);
+            
+            float xCenter = 640.0f * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
+            float yCenter = 480.0f * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
+            std::cout << "Calculated center: (" << xCenter << ", " << yCenter << ")" << std::endl;
+            
+            int fanCount = 20;
+            
+            for(int fanNum = 0; fanNum < fanCount; fanNum++)
+            {                
+                float xVertex = xCenter + scale * cos(2.0f * 3.14159265f * (fanNum / (fanCount * 1.0f)));
+                float yVertex = yCenter + scale * sin(2.0f * 3.14159265f * (fanNum / (fanCount * 1.0f)));
+                
+                std::cout << "Calculated fan point: (" << xVertex << ", " << yVertex << ")" << std::endl;
+                
+                float xVertexNext = xCenter + scale * cos(2.0f * 3.14159265f * ((fanNum + 1) / (fanCount * 1.0f)));
+                float yVertexNext = yCenter + scale * sin(2.0f * 3.14159265f * ((fanNum + 1) / (fanCount * 1.0f)));
+                
+                glVertex3f(xCenter, yCenter, 0.99f);
+                glVertex3f(xVertex, yVertex, 0.01f);
+                glVertex3f(xVertexNext, yVertexNext, 0.01f);
+            }
+/*
+            
+            glVertex2f(x * 20.0f + 1.0f, y * 20.0f + 1.0f);
+            glVertex2f(x * 20.0f + 16.0f, y * 20.0f + 2.0f);
+            glVertex2f(x * 20.0f + 10.0f, y * 20.0f + 17.0f);
+*/              
+                        
+
+                
+            
+        }
+        /*
+        glVertexPointer(3, GL_FLOAT,0,  
+        GLuint triangleVBO;
+        glG
+        glGenBuffers(1, &triangleVBO);
+        */
+                        glEnd();
+                
+                glFlush();
+}
+
 int main(int argc, char ** argv)
 {
+    /* Start code from William */
+    std::cout << "Starting code from William" << std::endl;
+    
+    srand(static_cast <unsigned> (time(0)));
+    
+    if(argc < 0)
+    {
+        // GLUT setup
+        glutInit(&argc, argv);
+        glutInitWindowSize(640, 480);
+        glutInitWindowPosition(100, 100);
+        glutCreateWindow("Test Window");
+        
+        // Initialization
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+ 
+        
+        gluOrtho2D(0.0, 640.0, 0.0, 480.0);
+        //glOrtho(0.0, 640.0, 0.0, 480.0, 0.0, 1.0);
+       
+        glEnable(GL_DEPTH_TEST);
+        glDepthMask(GL_TRUE);
+        glDepthFunc(GL_LEQUAL);
+        glEnable(GL_BLEND);
+        glDepthRange(0.0f, 1.0f);
+        
+        
+        glutDisplayFunc(myGlutDisplayFunc);
 
+        GLenum error = glGetError();
+        if(error != GL_NO_ERROR)
+        {
+            std::cout << "Error initializing OpenGL. Error is: " << gluErrorString(error) << std::endl;
+            return -1;
+        }  
+        
+        glutMainLoop();
+
+        /*
+        // Show, using OpenCV
+        cv::Mat myImg(480, 640, CV_8UC3);
+        cv::Mat flipped(640, 480, CV_8UC3);
+        glPixelStorei(GL_PACK_ALIGNMENT, (myImg.step & 3) ? 1 : 4);
+        glPixelStorei(GL_PACK_ROW_LENGTH, myImg.step / myImg.elemSize());
+        
+        glReadPixels(0, 0, myImg.cols, myImg.rows, GL_BGR, GL_UNSIGNED_BYTE, myImg.data);
+        cv::flip(myImg, flipped, 0);
+        
+        cv::namedWindow("OpenGL Output", cv::WINDOW_AUTOSIZE);// Create a window for display.
+		imshow("OpenGL Output", flipped);                       // Show our image inside it.
+        
+        cv::waitKey();
+        */
+        
+        std::cout << "Done with code from William" << std::endl;        
+        return 0;
+    }
+    
 	//get imput image
 	if (argc < 2)
 	{
-		cout << " Usage: " << argv[0] << " [-n #_of_disks -radius disk_radius -iteration #_of_CVT_iterations -maxD max_CVF_site_displacement] image_file_name" << endl;
+		cout << " Usage: " << argv[0] << " [OPTIONS] image_file_name" << endl;
+		cout << " Command Options: " << endl;
+        cout << "    -debug                                        Print additional helpful information from the computations." << endl;
+        cout << "    -n                   INT_NUM                  The number of disks (Voronoi cells) to create." << endl;
+        cout << "    -defaultRadius       FLOAT_NUM                Default disk radius in the output image." << endl;
+        cout << "    -diskScalingFactor   FLOAT_NUM                Scales disk based on inverse disk size. May be negative." << endl;
+        cout << "    -iteration           INT_NUM                  Number of CVT (Centroidal Voronoi Diagram) iterations to perform." << endl;
+        cout << "    -maxD                FLOAT_NUM                Maximum CVT site displacement value." << endl;
+        cout << "    -avg                                          Calculate the average site displacement instead of the max." << endl;
+        cout << "    -useOpenGL                                    Flag to use OpenGL to compute the voronoi diagrams." << endl;
 		return -1;
 	}
 
@@ -38,12 +179,15 @@ int main(int argc, char ** argv)
 	{
 		if (argv[i][0] == '-')
 		{
-
 			if (string(argv[i]) == "-debug") hedcut.debug=debug = true;
+            else if (string(argv[i]) == "-useOpenGL") hedcut.useOpenGL = true;
+            else if (string(argv[i]) == "-defaultRadius" && i + 1 < argc) hedcut.defaultRadius = static_cast<float>(atof(argv[++i]));
+            else if (string(argv[i]) == "-diskScalingFactor" && i + 1 < argc) hedcut.diskScalingFactor = static_cast<float>(atof(argv[++i]));
+            //else if (string(argv[i]) == "-scaleDisks") hedcut.scaleDisks = true;
 			else if (string(argv[i]) == "-n" && i + 1 < argc) sample_size = atoi(argv[++i]);
 			else if (string(argv[i]) == "-iteration" && i + 1 < argc) hedcut.cvt_iteration_limit = atoi(argv[++i]);
 			else if (string(argv[i]) == "-maxD" && i + 1 < argc) hedcut.max_site_displacement = atof(argv[++i]);
-			else if (string(argv[i]) == "-avg" && i + 1 < argc) hedcut.average_termination = true;
+			else if (string(argv[i]) == "-avg") hedcut.average_termination = true;
 			else
 				cerr << "! Error: Unknown flag " << argv[i] << ".  Ignored." << endl;
 		}
@@ -84,6 +228,11 @@ int main(int argc, char ** argv)
 	ss << img_name << "-" << sample_size << ".svg";
 	svg::Dimensions dimensions(image.size().width, image.size().height);
 	svg::Document doc(ss.str(), svg::Layout(dimensions, svg::Layout::TopLeft));
+    
+    const cv::Scalar& bgColorScalar = hedcut.getBackgroundColor();
+    svg::Color backgroundColor(bgColorScalar.val[0], bgColorScalar.val[1], bgColorScalar.val[2]);
+    svg::Rectangle background(svg::Point(0.0, 0.0), image.size().width, image.size().height, svg::Fill(backgroundColor));
+    doc << background;
 
 	for (auto& disk : hedcut.getDisks())
 	{
