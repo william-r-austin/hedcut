@@ -56,13 +56,16 @@ Hedcut::Hedcut()
     
     regularizationParamSet = false;
     regularizationParam = 0.0f;
+    
+    edgeDetection = false;
+    edgeDetectionWeight = 0.0;
 }
 
 
 
 bool Hedcut::build(cv::Mat & input_image, int n)
 {
-    std::cout << "Running Hedcut::build" << std::endl;
+    //std::cout << "Running Hedcut::build" << std::endl;
 	cv::Mat grayscale;
 	cv::cvtColor(input_image, grayscale, cv::COLOR_BGR2GRAY);
 
@@ -78,6 +81,8 @@ bool Hedcut::build(cv::Mat & input_image, int n)
 	cvt.average_termination = this->average_termination;
 	cvt.debug = this->debug;
     cvt.useOpenGL = this->useOpenGL;
+    cvt.detectEdges = this->edgeDetection;
+    cvt.edgeWeight = this->edgeDetectionWeight;
 
 	clock_t startTime, endTime;
 	startTime = clock();
@@ -98,7 +103,7 @@ bool Hedcut::build(cv::Mat & input_image, int n)
 
 void Hedcut::sample_initial_points(cv::Mat & img, int n, std::vector<cv::Point2d> & pts)
 {
-    std::cout << "Running Hedcut::sample_initial_points" << std::endl;
+    //std::cout << "Running Hedcut::sample_initial_points" << std::endl;
 	//create n points that spread evenly that are in areas of black points...
 	int count = 0;
 
@@ -307,7 +312,7 @@ void Hedcut::create_disks(cv::Mat & img, CVT & cvt)
         float currentAdjustedArea = currentArea - minArea;
         float areaZeroToOne = currentAdjustedArea / totalAreaRange;
         
-        std::cout << "Computing Area. Range is " << minArea << " - " << maxArea << " (" << totalAreaRange << "), current = " << currentArea << ", zt1 value = " << areaZeroToOne << std::endl;
+        //std::cout << "Computing Area. Range is " << minArea << " - " << maxArea << " (" << totalAreaRange << "), current = " << currentArea << ", zt1 value = " << areaZeroToOne << std::endl;
         
         
         float totalIntensityRange = maxCellIntensity - minCellIntensity;
@@ -335,17 +340,19 @@ void Hedcut::create_disks(cv::Mat & img, CVT & cvt)
                 }
             }
             
-            std::cout << "Done Area Scaling. Param = " << areaScalingParam << ", final value = " << calculatedDiskArea << std::endl;
+            //std::cout << "Done Area Scaling. Param = " << areaScalingParam << ", final value = " << calculatedDiskArea << std::endl;
             
+            // In this computation, higher intensity is more white, which is counterintuitive. Therefore,
+            // we swap the operations here, as opposed to area.
             if(intensityScalingParamSet)
             {
                 if(intensityScalingParam < 0.0f)
                 {
-                    calculatedDiskArea += ((1.0f - intensityZeroToOne) * (intensityScalingParam * -1.0f));
+                    calculatedDiskArea += (intensityZeroToOne * (intensityScalingParam * -1.0f));
                 }
                 else
                 {
-                    calculatedDiskArea += (intensityZeroToOne * intensityScalingParam);
+                    calculatedDiskArea += ((1.0f - intensityZeroToOne) * intensityScalingParam);
                 }
             }
         }
@@ -376,7 +383,7 @@ void Hedcut::create_disks(cv::Mat & img, CVT & cvt)
         
         disk.radius = sqrt(calculatedDiskArea / PI_VALUE);
         
-        std::cout << "Radius = " << disk.radius << ", Area  was: " << calculatedDiskArea << std::endl;
+        //std::cout << "Radius = " << disk.radius << ", Area  was: " << calculatedDiskArea << std::endl;
         
         //sqrt(cell.coverage.size() * 1.0f) / 3;
         
@@ -388,7 +395,7 @@ void Hedcut::create_disks(cv::Mat & img, CVT & cvt)
 		//this->disks.push_back(disk);
 	} //end for cell
 	
-	std::cout << "Reg Set " << regularizationParamSet << ", Area Scaling Set " << areaScalingParamSet << ", intensityScalingParamSet " << intensityScalingParamSet << std::endl;
+	//std::cout << "Reg Set " << regularizationParamSet << ", Area Scaling Set " << areaScalingParamSet << ", intensityScalingParamSet " << intensityScalingParamSet << std::endl;
 	
     if(regularizationParamSet && (areaScalingParamSet || intensityScalingParamSet))
     {
@@ -430,7 +437,7 @@ void Hedcut::create_disks(cv::Mat & img, CVT & cvt)
             diskRadiusValues.push_back(myRecord);
         }
         
-        std::cout << "Sorted. Min = " << minDiskRadius << ", Max = " << maxDiskRadius << std::endl;
+        //std::cout << "Sorted. Min = " << minDiskRadius << ", Max = " << maxDiskRadius << std::endl;
         
         if(maxDiskRadius > minDiskRadius)
         {
@@ -446,8 +453,8 @@ void Hedcut::create_disks(cv::Mat & img, CVT & cvt)
                 
                 float newRadius = oldRadius + regularizationParam * delta;
                 diskVector[sfi.id].radius = newRadius;
-                std::cout << "Regularizing!! Range = " << minDiskRadius << " - " << maxDiskRadius << ", oldRadius = " << oldRadius << ", id = " << sfi.id << 
-                    ", sorted rank = " << i << " / " << diskRadiusValues.size() - 1 << ", new radius = " << newRadius << std::endl;
+               // std::cout << "Regularizing!! Range = " << minDiskRadius << " - " << maxDiskRadius << ", oldRadius = " << oldRadius << ", id = " << sfi.id << 
+               //     ", sorted rank = " << i << " / " << diskRadiusValues.size() - 1 << ", new radius = " << newRadius << std::endl;
             }
         }
     }

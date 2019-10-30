@@ -50,6 +50,8 @@ public:
 		max_site_displacement = 1.01f;
 		average_termination = false;
 		debug = false;
+        detectEdges = false;
+        edgeWeight = 0.0f;
 	}
 
 	void compute_weighted_cvt(cv::Mat &  img, std::vector<cv::Point2d> & pts);
@@ -64,6 +66,8 @@ public:
 	bool average_termination;
 	bool debug;
     bool useOpenGL;
+    bool detectEdges;
+    float edgeWeight;
 
 private:
 

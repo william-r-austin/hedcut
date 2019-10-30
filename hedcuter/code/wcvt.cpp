@@ -135,7 +135,7 @@ void CVT::vor(cv::Mat &  img)
 
 void CVT::compute_weighted_cvt(cv::Mat &  img, std::vector<cv::Point2d> & sites)
 {
-    std::cout << "Running CVT::compute_weighted_cvt" << std::endl;
+    //std::cout << "Running CVT::compute_weighted_cvt" << std::endl;
 	//inint
 	int site_size = sites.size();
 	this->cells.resize(site_size);
@@ -144,6 +144,67 @@ void CVT::compute_weighted_cvt(cv::Mat &  img, std::vector<cv::Point2d> & sites)
 		this->cells[i].site = sites[i];
 	}
 
+	
+	// Edge Detection
+	cv::Mat imgWithEdgeDetection;
+	
+	if(detectEdges && edgeWeight > 0.0f)
+    {
+        cv::Mat edgeDetectionCopy(img);
+        
+        cv::GaussianBlur(edgeDetectionCopy, edgeDetectionCopy, cv::Size(3, 3), 0, 0, cv::BORDER_DEFAULT);
+        
+        cv::Mat xGradient;
+        cv::Mat yGradient;
+        cv::Mat xGradientAbs;
+        cv::Mat yGradientAbs;
+        cv::Mat sobelMat;
+        
+        int scale = 1;
+        int delta = 0;
+        
+        cv::Sobel(edgeDetectionCopy, xGradient, CV_16S, 1, 0, 3, scale, delta, cv::BORDER_DEFAULT);
+        cv::convertScaleAbs(xGradient, xGradientAbs);
+        
+        cv::Sobel(edgeDetectionCopy, yGradient, CV_16S, 0, 1, 3, scale, delta, cv::BORDER_DEFAULT);
+        cv::convertScaleAbs(yGradient, yGradientAbs);
+        
+        cv::addWeighted(xGradientAbs, 0.5, yGradientAbs, 0.5, 0, sobelMat);
+        
+        if(debug)
+        {        
+            cv::namedWindow("Sobel Result", cv::WINDOW_AUTOSIZE);// Create a window for display.
+            cv::imshow("Sobel Result", sobelMat);
+            cv::waitKey(50);
+        }     
+        
+        cv::Mat copy2;
+        cv::bitwise_not(img, copy2);		
+        /*
+        cv::namedWindow("Inverted Image", cv::WINDOW_AUTOSIZE);
+        cv::imshow("Inverted Image", copy2);
+        cv::waitKey(50);
+        */
+        
+        double alphaVal = 1.0 / (1.0 + edgeWeight);
+        
+        cv::Mat combinedMatInverted;        
+        cv::addWeighted(copy2, alphaVal, sobelMat, 1.0 - alphaVal, 0, combinedMatInverted);
+        cv::bitwise_not(combinedMatInverted, imgWithEdgeDetection);
+        
+        if(debug)
+        {    
+            cv::namedWindow("Adjusted Image", cv::WINDOW_AUTOSIZE);
+            cv::imshow("Adjusted Image", imgWithEdgeDetection);
+            cv::waitKey(50);
+        }
+    }
+
+	
+    
+	// Done with edged detection stuff.
+    
+    
 	float max_dist_moved = FLT_MAX;
 
     VorGPU vorGPU(img.size().width, img.size().height);
@@ -192,7 +253,14 @@ void CVT::compute_weighted_cvt(cv::Mat &  img, std::vector<cv::Point2d> & sites)
             vor(img); //compute voronoi
         }
         
-		max_dist_moved = move_sites(img);
+        if(detectEdges && edgeWeight > 0.0f) 
+        {
+            max_dist_moved = move_sites(imgWithEdgeDetection);
+        }
+        else 
+        {
+            max_dist_moved = move_sites(img);
+        }
 
 		if (debug) std::cout << "[" << iteration << "] max dist moved = " << max_dist_moved << std::endl;
 		iteration++;

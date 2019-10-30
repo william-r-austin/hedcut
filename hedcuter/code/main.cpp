@@ -161,8 +161,8 @@ int main(int argc, char ** argv)
 		cout << " Command Options: " << endl;
         cout << "    -debug                                        Print additional helpful information from the computations." << endl;
         cout << "    -n                   INT                      The number of disks (Voronoi cells) to create." << endl;
-        cout << "    -defaultRadius       FLOAT                    Default disk radius in the output image." << endl;
-        cout << "    -diskScalingFactor   FLOAT                    Scales disk based on inverse disk size. May be negative." << endl;
+        //cout << "    -defaultRadius       FLOAT                    Default disk radius in the output image." << endl;
+        //cout << "    -diskScalingFactor   FLOAT                    Scales disk based on inverse disk size. May be negative." << endl;
         cout << "    -iteration           INT                      Number of CVT (Centroidal Voronoi Diagram) iterations to perform." << endl;
         cout << "    -maxD                FLOAT                    Maximum CVT site displacement value." << endl;
         cout << "    -avg                                          Calculate the average site displacement instead of the max." << endl;
@@ -177,6 +177,7 @@ int main(int argc, char ** argv)
         cout << "    -areaScaling         FLOAT                    Scales the disk size based on the area of the Voronoi cell. May be negative." << endl;
         cout << "    -intensityScaling    FLOAT                    Scales the disk size based on the average color intensity of the cell. May be negative." << endl;
         cout << "    -regularize          FLOAT                    Transforms disk size differences towards a uniform distribution. 0 = unchanged, 1 = uniform." << endl;
+        cout << "    -detectEdges         FLOAT                    Uses the Sobel operator to find edges for more defined stippling. Must be >= 0." << endl;
         /*
         
             minAreaParamSet = false;
@@ -267,6 +268,11 @@ int main(int argc, char ** argv)
             {
                 hedcut.regularizationParamSet = true;
                 hedcut.regularizationParam = atof(argv[++i]);
+            }
+            else if (string(argv[i]) == "-detectEdges" && i + 1 < argc)
+            {
+                hedcut.edgeDetection = true;
+                hedcut.edgeDetectionWeight = atof(argv[++i]);
             }
 			else
             {

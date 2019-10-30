@@ -66,6 +66,10 @@ public:
         
     bool debug;                  //if true, debug information will be execute
     
+    
+    bool edgeDetection;
+    float edgeDetectionWeight;   
+    
     bool minAreaParamSet;
     float minAreaParam;
     
