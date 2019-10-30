@@ -87,6 +87,8 @@ public:
     
     bool regularizationParamSet;
     float regularizationParam;
+    
+    float samplingWeight;
 
 private:
 	void sample_initial_points(cv::Mat & img, int n, std::vector<cv::Point2d> & pts);

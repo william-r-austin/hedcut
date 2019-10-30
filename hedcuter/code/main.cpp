@@ -159,25 +159,39 @@ int main(int argc, char ** argv)
 	{
 		cout << " Usage: " << argv[0] << " [OPTIONS] image_file_name" << endl;
 		cout << " Command Options: " << endl;
-        cout << "    -debug                                        Print additional helpful information from the computations." << endl;
-        cout << "    -n                   INT                      The number of disks (Voronoi cells) to create." << endl;
-        //cout << "    -defaultRadius       FLOAT                    Default disk radius in the output image." << endl;
-        //cout << "    -diskScalingFactor   FLOAT                    Scales disk based on inverse disk size. May be negative." << endl;
-        cout << "    -iteration           INT                      Number of CVT (Centroidal Voronoi Diagram) iterations to perform." << endl;
-        cout << "    -maxD                FLOAT                    Maximum CVT site displacement value." << endl;
-        cout << "    -avg                                          Calculate the average site displacement instead of the max." << endl;
-        cout << "    -useOpenGL                                    Flag to use OpenGL to compute the Voronoi diagrams." << endl;
-        cout << "    -bgColor             INT  INT  INT            Set the image to the specified RGB value as the background color." << endl;
-        cout << "    -diskColor           INT  INT  INT            Use the specified RGB value as the disk color." << endl;
-        cout << "    -useAvgDiskColor                              Color the disks based on the average cell color." << endl;
-        cout << "    -useGrayscaleColor                            Color the disks based on the average cell color, converted to grayscale." << endl;
-        cout << "    -defaultDiskArea     FLOAT                    Default size of the disk. May be scaled using options below. Must be >= 0." << endl;
-        cout << "    -minDiskArea         FLOAT                    If set, all disk sizes are clamped to be at least this area.  Must be >= 0." << endl;
-        cout << "    -maxDiskArea         FLOAT                    If set, all disk sizes are clamped to be at most this area.  Must be >= 0." << endl;
-        cout << "    -areaScaling         FLOAT                    Scales the disk size based on the area of the Voronoi cell. May be negative." << endl;
-        cout << "    -intensityScaling    FLOAT                    Scales the disk size based on the average color intensity of the cell. May be negative." << endl;
-        cout << "    -regularize          FLOAT                    Transforms disk size differences towards a uniform distribution. 0 = unchanged, 1 = uniform." << endl;
-        cout << "    -detectEdges         FLOAT                    Uses the Sobel operator to find edges for more defined stippling. Must be >= 0." << endl;
+        cout << "    -debug                                  Print additional helpful information from the computations." << endl;
+        cout << "    -n                   INT                The number of disks (Voronoi cells) to create." << endl;
+        //cout << "    -defaultRadius       FLOAT            Default disk radius in the output image." << endl;
+        //cout << "    -diskScalingFactor   FLOAT            Scales disk based on inverse disk size. May be negative." << endl;
+        cout << "    -iteration           INT                Number of CVT (Centroidal Voronoi Diagram) iterations to perform." << endl; 
+        cout << "    -maxD                FLOAT              Maximum CVT site displacement value." << endl;
+        cout << "    -avg                                    Calculate the average site displacement instead of the max." << endl;
+        cout << "    -useOpenGL                              Flag to use OpenGL to compute the Voronoi diagrams." << endl;
+        cout << "    -bgColor             INT  INT  INT      Set the image to the specified RGB value as the background color. Each argument " << endl;
+        cout << "                                            should be in the [0, 256] range." << endl;
+        cout << "    -diskColor           INT  INT  INT      Use the specified RGB value as the disk color." << endl;
+        cout << "                                            Each argument should be in the [0, 256] range." << endl;
+        cout << "    -useAvgDiskColor                        Color the disks based on the average RGB cell color." << endl;
+        cout << "    -useGrayscaleColor                      Color the disks based on the average cell color, converted to grayscale." << endl;
+        cout << "    -defaultDiskArea     FLOAT              Default size of the disk, in pixels. May be scaled using the options below. Must be >= 0." << endl;
+        cout << "    -minDiskArea         FLOAT              If set, all disk sizes are clamped to be at least this area, in pixels. Must be >= 0." << endl;
+        cout << "    -maxDiskArea         FLOAT              If set, all disk sizes are clamped to be at most this area, in pixels. Must be >= 0." << endl;
+        cout << "    -areaScaling         FLOAT              Scales the disk size based on the area of the Voronoi cell. May be negative, so the" << endl;
+        cout << "                                            disk size is inversely proportional to the cell size." << endl;
+        cout << "    -intensityScaling    FLOAT              Scales the disk size based on the average color intensity of the cell. By default," << endl;
+        cout << "                                            this causes darker areas to have bigger disks, but negative values will do the same " << endl;
+        cout << "                                            for lighter areas." << endl;
+        cout << "    -regularize          FLOAT              Transforms disk size differences towards a uniform distribution. This should be in " << endl;
+        cout << "                                            the [0, 1] interval, where a value of 0 will leave the distribution unchanged, and 1 " << endl;
+        cout << "                                            will induce a completely uniform distribution. This will effect the disk radii, without" << endl;
+        cout << "                                            changing the min and max values." << endl;
+        cout << "    -detectEdges         FLOAT              Uses the Sobel operator to find edges for more defined stippling. The value represents" << endl;
+        cout << "                                            the alpha term for how to weight the Sobel output. A value of 0 gives no effect, and" << endl;
+        cout << "                                            larger values weight the detected edges more heavily in the centroidal calculation. Note" << endl;
+        cout << "                                            that this will not change any other outputs based on color or intensity." << endl;
+        cout << "    -samplingWeight      FLOAT              Weight the initial samples so that darker pixels are favored to improve convergence. We" << endl;
+        cout << "                                            can  also supply a negative value to favor lighter pixels. Abs(x) should probably be" << endl;
+        cout << "                                            less than 4 or 5." << endl;
         /*
         
             minAreaParamSet = false;
@@ -273,6 +287,10 @@ int main(int argc, char ** argv)
             {
                 hedcut.edgeDetection = true;
                 hedcut.edgeDetectionWeight = atof(argv[++i]);
+            }
+            else if (string(argv[i]) == "-samplingWeight" && i + 1 < argc)
+            {
+                hedcut.samplingWeight = atof(argv[++i]);
             }
 			else
             {

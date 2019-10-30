@@ -59,6 +59,8 @@ Hedcut::Hedcut()
     
     edgeDetection = false;
     edgeDetectionWeight = 0.0;
+    
+    samplingWeight = 0.0;
 }
 
 
@@ -119,8 +121,24 @@ void Hedcut::sample_initial_points(cv::Mat & img, int n, std::vector<cv::Point2d
 
 		//decide to keep basic on a probability (black has higher probability)
 		float value = img.at<uchar>(r, c)*1.0/255; //black:0, white:1
-		float gr = fabs(rng_gaussian.gaussian(0.8));
-		if ( value < gr && visited.at<uchar>(r, c) ==0) //keep
+		
+		//float factor = 2; // Higher is more restrictive
+		float threshold = 1.0f;
+        
+		if(samplingWeight < 0.0f) 
+        {
+            threshold = (1.0f + samplingWeight) + (-1.f * samplingWeight * value);
+        }
+        else 
+        {
+            threshold = 1.0f - (samplingWeight * value); 
+        }
+		
+		float testValue = rng_uniform.uniform(0.f, 1.f);
+        if(testValue < threshold && visited.at<uchar>(r, c) ==0) //keep
+		
+		//float gr = fabs(rng_gaussian.gaussian(0.8));
+		//if ( value < gr && visited.at<uchar>(r, c) ==0) //keep
 		{
 			count++;
 			pts.push_back(cv::Point(r, c));
