@@ -11,12 +11,23 @@ The phonetic spelling of "hed" may be based on newspapers' use of the term hed f
 
 #include "wcvt.h" //weighted centroidal voronoi tessellation
 
+const float PI_VALUE = 3.1415927f;
+
 struct HedcutDisk
 {
 	cv::Point2d center;
 	float radius;
 	cv::Scalar color;
 };
+
+struct SortableFloat
+{
+    int id;
+    float value;
+};
+
+bool compareSortableFloat(SortableFloat sf1, SortableFloat sf2);
+
 
 class Hedcut
 {
@@ -31,9 +42,14 @@ public:
         return disks;
     }
 	
-	const cv::Scalar& getBackgroundColor() const
+	cv::Scalar& getBackgroundColor()
 	{
         return backgroundColor;
+    }
+    
+    cv::Scalar& getDiskColor()
+    {
+        return diskColor;
     }
 
 	// CVT control flags
@@ -43,14 +59,36 @@ public:
 	bool useOpenGL;              // use OpenGL to create the Voronoi diagram at each timestep.
     float defaultRadius;         // default size that we want disks to be
     float diskScalingFactor;     // factor to scale the disk size by
-    //bool scaleDisks;           // scale the disks according to how big their
-	bool debug;                  //if true, debug information will be excuted
+    bool bgColor;                // specify a specific background color for the background
+    bool diskColorFlag;          // specify a disk color
+    bool useAvgDiskColor;        // specify to use an average disk color
+    bool useGrayscaleColor;      // specify to color the disks based on the grayscale average for their cell
+        
+    bool debug;                  //if true, debug information will be execute
+    
+    bool minAreaParamSet;
+    float minAreaParam;
+    
+    bool maxAreaParamSet;
+    float maxAreaParam;
+    
+    bool defaultAreaParamSet;
+    float defaultAreaParam; 
+    
+    bool intensityScalingParamSet;
+    float intensityScalingParam;
+    
+    bool areaScalingParamSet;
+    float areaScalingParam;
+    
+    bool regularizationParamSet;
+    float regularizationParam;
 
 private:
-
 	void sample_initial_points(cv::Mat & img, int n, std::vector<cv::Point2d> & pts);
 	void create_disks(cv::Mat & img, CVT & cvt);
 
 	std::list<HedcutDisk> disks;
     cv::Scalar backgroundColor;
+    cv::Scalar diskColor;
 };

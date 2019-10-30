@@ -96,7 +96,7 @@ void myGlutDisplayFunc(void)
 int main(int argc, char ** argv)
 {
     /* Start code from William */
-    std::cout << "Starting code from William" << std::endl;
+    //std::cout << "Starting code from William" << std::endl;
     
     srand(static_cast <unsigned> (time(0)));
     
@@ -150,7 +150,7 @@ int main(int argc, char ** argv)
         cv::waitKey();
         */
         
-        std::cout << "Done with code from William" << std::endl;        
+        //std::cout << "Done with code from William" << std::endl;        
         return 0;
     }
     
@@ -160,13 +160,43 @@ int main(int argc, char ** argv)
 		cout << " Usage: " << argv[0] << " [OPTIONS] image_file_name" << endl;
 		cout << " Command Options: " << endl;
         cout << "    -debug                                        Print additional helpful information from the computations." << endl;
-        cout << "    -n                   INT_NUM                  The number of disks (Voronoi cells) to create." << endl;
-        cout << "    -defaultRadius       FLOAT_NUM                Default disk radius in the output image." << endl;
-        cout << "    -diskScalingFactor   FLOAT_NUM                Scales disk based on inverse disk size. May be negative." << endl;
-        cout << "    -iteration           INT_NUM                  Number of CVT (Centroidal Voronoi Diagram) iterations to perform." << endl;
-        cout << "    -maxD                FLOAT_NUM                Maximum CVT site displacement value." << endl;
+        cout << "    -n                   INT                      The number of disks (Voronoi cells) to create." << endl;
+        cout << "    -defaultRadius       FLOAT                    Default disk radius in the output image." << endl;
+        cout << "    -diskScalingFactor   FLOAT                    Scales disk based on inverse disk size. May be negative." << endl;
+        cout << "    -iteration           INT                      Number of CVT (Centroidal Voronoi Diagram) iterations to perform." << endl;
+        cout << "    -maxD                FLOAT                    Maximum CVT site displacement value." << endl;
         cout << "    -avg                                          Calculate the average site displacement instead of the max." << endl;
-        cout << "    -useOpenGL                                    Flag to use OpenGL to compute the voronoi diagrams." << endl;
+        cout << "    -useOpenGL                                    Flag to use OpenGL to compute the Voronoi diagrams." << endl;
+        cout << "    -bgColor             INT  INT  INT            Set the image to the specified RGB value as the background color." << endl;
+        cout << "    -diskColor           INT  INT  INT            Use the specified RGB value as the disk color." << endl;
+        cout << "    -useAvgDiskColor                              Color the disks based on the average cell color." << endl;
+        cout << "    -useGrayscaleColor                            Color the disks based on the average cell color, converted to grayscale." << endl;
+        cout << "    -defaultDiskArea     FLOAT                    Default size of the disk. May be scaled using options below. Must be >= 0." << endl;
+        cout << "    -minDiskArea         FLOAT                    If set, all disk sizes are clamped to be at least this area.  Must be >= 0." << endl;
+        cout << "    -maxDiskArea         FLOAT                    If set, all disk sizes are clamped to be at most this area.  Must be >= 0." << endl;
+        cout << "    -areaScaling         FLOAT                    Scales the disk size based on the area of the Voronoi cell. May be negative." << endl;
+        cout << "    -intensityScaling    FLOAT                    Scales the disk size based on the average color intensity of the cell. May be negative." << endl;
+        cout << "    -regularize          FLOAT                    Transforms disk size differences towards a uniform distribution. 0 = unchanged, 1 = uniform." << endl;
+        /*
+        
+            minAreaParamSet = false;
+    minAreaParam = 0.0f;
+    
+    maxAreaParamSet = false;
+    maxAreaParam = 10.0f;
+    
+    defaultAreaParamSet = false;
+    defaultAreaParam = 5.0f; 
+    
+    intensityScalingParamSet = false;
+    intensityScalingParam = 1.0f;
+    
+    areaScalingParamSet = false;
+    areaScalingParam = 1.0f;
+    
+    regularizationParamSet = false;
+    regularizationParam = 0.0f;*/
+        
 		return -1;
 	}
 
@@ -181,15 +211,67 @@ int main(int argc, char ** argv)
 		{
 			if (string(argv[i]) == "-debug") hedcut.debug=debug = true;
             else if (string(argv[i]) == "-useOpenGL") hedcut.useOpenGL = true;
-            else if (string(argv[i]) == "-defaultRadius" && i + 1 < argc) hedcut.defaultRadius = static_cast<float>(atof(argv[++i]));
-            else if (string(argv[i]) == "-diskScalingFactor" && i + 1 < argc) hedcut.diskScalingFactor = static_cast<float>(atof(argv[++i]));
+            //else if (string(argv[i]) == "-defaultRadius" && i + 1 < argc) hedcut.defaultRadius = static_cast<float>(atof(argv[++i]));
+            //else if (string(argv[i]) == "-diskScalingFactor" && i + 1 < argc) hedcut.diskScalingFactor = static_cast<float>(atof(argv[++i]));
             //else if (string(argv[i]) == "-scaleDisks") hedcut.scaleDisks = true;
 			else if (string(argv[i]) == "-n" && i + 1 < argc) sample_size = atoi(argv[++i]);
 			else if (string(argv[i]) == "-iteration" && i + 1 < argc) hedcut.cvt_iteration_limit = atoi(argv[++i]);
 			else if (string(argv[i]) == "-maxD" && i + 1 < argc) hedcut.max_site_displacement = atof(argv[++i]);
 			else if (string(argv[i]) == "-avg") hedcut.average_termination = true;
+            else if (string(argv[i]) == "-bgColor" && i + 3 < argc)
+            {
+                hedcut.bgColor = true;
+                cv::Scalar &backgroundColor = hedcut.getBackgroundColor();
+                backgroundColor.val[0] = static_cast<uchar>(atoi(argv[++i]));
+                backgroundColor.val[1] = static_cast<uchar>(atoi(argv[++i]));
+                backgroundColor.val[2] = static_cast<uchar>(atoi(argv[++i]));
+            }
+            else if (string(argv[i]) == "-diskColor" && i + 3 < argc)
+            {
+                //std::cout << "Got here - setting disk color." << std::endl;
+                hedcut.diskColorFlag = true;
+                cv::Scalar &diskColor = hedcut.getDiskColor();
+                diskColor.val[0] = static_cast<uchar>(atoi(argv[++i]));
+                diskColor.val[1] = static_cast<uchar>(atoi(argv[++i]));
+                diskColor.val[2] = static_cast<uchar>(atoi(argv[++i]));
+            }
+            else if (string(argv[i]) == "-useAvgDiskColor") hedcut.useAvgDiskColor = true;
+            else if (string(argv[i]) == "-useGrayscaleColor") hedcut.useGrayscaleColor = true;
+            
+            else if (string(argv[i]) == "-defaultDiskArea" && i + 1 < argc)
+            {
+                hedcut.defaultAreaParamSet = true;
+                hedcut.defaultAreaParam = atof(argv[++i]);
+            }
+            else if (string(argv[i]) == "-minDiskArea" && i + 1 < argc)
+            {
+                hedcut.minAreaParamSet = true;
+                hedcut.minAreaParam = atof(argv[++i]);
+            }
+            else if (string(argv[i]) == "-maxDiskArea" && i + 1 < argc)
+            {
+                hedcut.maxAreaParamSet = true;
+                hedcut.maxAreaParam = atof(argv[++i]);
+            }
+            else if (string(argv[i]) == "-areaScaling" && i + 1 < argc)
+            {
+                hedcut.areaScalingParamSet = true;
+                hedcut.areaScalingParam = atof(argv[++i]);
+            }
+            else if (string(argv[i]) == "-intensityScaling" && i + 1 < argc)
+            {
+                hedcut.intensityScalingParamSet = true;
+                hedcut.intensityScalingParam = atof(argv[++i]);
+            }
+            else if (string(argv[i]) == "-regularize" && i + 1 < argc)
+            {
+                hedcut.regularizationParamSet = true;
+                hedcut.regularizationParam = atof(argv[++i]);
+            }
 			else
+            {
 				cerr << "! Error: Unknown flag " << argv[i] << ".  Ignored." << endl;
+            }
 		}
 		else img_filename = argv[i];
 	}
@@ -229,10 +311,13 @@ int main(int argc, char ** argv)
 	svg::Dimensions dimensions(image.size().width, image.size().height);
 	svg::Document doc(ss.str(), svg::Layout(dimensions, svg::Layout::TopLeft));
     
-    const cv::Scalar& bgColorScalar = hedcut.getBackgroundColor();
-    svg::Color backgroundColor(bgColorScalar.val[0], bgColorScalar.val[1], bgColorScalar.val[2]);
-    svg::Rectangle background(svg::Point(0.0, 0.0), image.size().width, image.size().height, svg::Fill(backgroundColor));
-    doc << background;
+    if(hedcut.bgColor)
+    {
+        const cv::Scalar& bgColorScalar = hedcut.getBackgroundColor();
+        svg::Color backgroundColor(bgColorScalar.val[0], bgColorScalar.val[1], bgColorScalar.val[2]);
+        svg::Rectangle background(svg::Point(0.0, 0.0), image.size().width, image.size().height, svg::Fill(backgroundColor));
+        doc << background;
+    }
 
 	for (auto& disk : hedcut.getDisks())
 	{

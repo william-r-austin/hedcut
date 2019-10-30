@@ -1,6 +1,10 @@
 #include "hedcut.h"
 #include <time.h>
 
+bool compareSortableFloat(SortableFloat sf1, SortableFloat sf2)
+{
+    return sf1.value < sf2.value;
+}
 
 Hedcut::Hedcut()
 {
@@ -13,6 +17,13 @@ Hedcut::Hedcut()
     //scaleDisks = false;
     diskScalingFactor = 0.0f;
     defaultRadius = 1.0f;
+    
+    bgColor = false;
+    diskColorFlag = false;
+    useAvgDiskColor = false;
+    useGrayscaleColor = false;
+    
+    
     //bool scaleDisks;            
     // scale the disks according to how big their
     
@@ -21,6 +32,30 @@ Hedcut::Hedcut()
     backgroundColor.val[1] = 255;
     backgroundColor.val[2] = 255;
     backgroundColor.val[3] = 0;
+    
+    // Set the diskColor to black
+    diskColor.val[0] = 0;
+    diskColor.val[1] = 0;
+    diskColor.val[2] = 0;
+    diskColor.val[3] = 0;
+            
+    minAreaParamSet = false;
+    minAreaParam = 0.0f;
+    
+    maxAreaParamSet = false;
+    maxAreaParam = 10.0f;
+    
+    defaultAreaParamSet = false;
+    defaultAreaParam = 5.0f; 
+    
+    intensityScalingParamSet = false;
+    intensityScalingParam = 1.0f;
+    
+    areaScalingParamSet = false;
+    areaScalingParam = 1.0f;
+    
+    regularizationParamSet = false;
+    regularizationParam = 0.0f;
 }
 
 
@@ -60,7 +95,6 @@ bool Hedcut::build(cv::Mat & input_image, int n)
 
 	return true;
 }
-
 
 void Hedcut::sample_initial_points(cv::Mat & img, int n, std::vector<cv::Point2d> & pts)
 {
@@ -103,11 +137,12 @@ void Hedcut::sample_initial_points(cv::Mat & img, int n, std::vector<cv::Point2d
 
 void Hedcut::create_disks(cv::Mat & img, CVT & cvt)
 {
+    std::vector<HedcutDisk> diskVector;
 	cv::Mat grayscale;
 	cv::cvtColor(img, grayscale, cv::COLOR_BGR2GRAY);
 
 	disks.clear();
-    
+  
     double totalIntensity = 0.0;
     double totalPixels = 1.0 * grayscale.rows * grayscale.cols;
     
@@ -127,31 +162,85 @@ void Hedcut::create_disks(cv::Mat & img, CVT & cvt)
             totalIntensity += (1.0 * grayscale.at<uchar>(grayRow, grayCol));
         }
     }
-    
+        
     double avgPixelIntensity = totalIntensity / totalPixels;
     double avgR = totalR / totalPixels;
     double avgG = totalG / totalPixels;
     double avgB = totalB / totalPixels;
     
-    backgroundColor.val[0] = static_cast<uchar>(avgR);
-    backgroundColor.val[1] = static_cast<uchar>(avgG);
-    backgroundColor.val[2] = static_cast<uchar>(avgB);
+    //backgroundColor.val[0] = static_cast<uchar>(avgR);
+    //backgroundColor.val[1] = static_cast<uchar>(avgG);
+    //backgroundColor.val[2] = static_cast<uchar>(avgB);
     
     
+
+              
     float maxRadius = 0.0f;
+    float maxArea = 0.0f;
+    float minArea = 999999.0f;
+    float maxLogArea = 0.0f;
+    float minLogArea = 999999.0f;
+    float minCellIntensity = 9999.0f;
+    float maxCellIntensity = 0.0f;
     
     for(auto& cell : cvt.getCells())
     {
+        float currentArea = static_cast<float>(cell.coverage.size());
+               
+        if(currentArea > maxArea) 
+        {
+            maxArea = currentArea;
+        }
+        
+        if(currentArea < minArea)
+        {
+            minArea = currentArea;
+        }
+        
+        float currentLogArea = static_cast<float>(log(log(currentArea + 1.0) + 1.0));
+        
+        if(currentLogArea > maxLogArea)
+        {
+            maxLogArea = currentLogArea;
+        }
+        
+        if(currentLogArea < minLogArea)
+        {
+            minLogArea = currentLogArea;
+        }
+        
         float currentRadius = sqrt(1.0f * cell.coverage.size()) / 2.0f;
-        std::cout << "Current disk radius (actual) = " << currentRadius << std::endl;
+        //std::cout << "Current disk radius (actual) = " << currentRadius << std::endl;
         if(currentRadius > maxRadius)
         {
             maxRadius = currentRadius;
         }
+        
+        unsigned int totalCellIntensity = 0;
+        
+        for (auto & resizedPix : cell.coverage)
+		{
+			cv::Point pix(resizedPix.x, resizedPix.y);
+			totalCellIntensity += img.at<cv::Vec3b>(pix.x, pix.y)[2];
+			totalCellIntensity += img.at<cv::Vec3b>(pix.x, pix.y)[1];
+			totalCellIntensity += img.at<cv::Vec3b>(pix.x, pix.y)[0];
+		}
+		
+		float currentCellIntensity = static_cast<float>((1.0 * totalCellIntensity) / cell.coverage.size());
+        
+        if(currentCellIntensity > maxCellIntensity)
+        {
+            maxCellIntensity = currentCellIntensity;
+        }
+        
+        if(currentCellIntensity < minCellIntensity)
+        {
+            minCellIntensity = currentCellIntensity;
+        }
     }
     
-    std::cout << "Max disk radius (actual) = " << maxRadius << std::endl;
-    
+
+        
 	//create disks from cvt
 	for (auto& cell : cvt.getCells())
 	{
@@ -167,30 +256,236 @@ void Hedcut::create_disks(cv::Mat & img, CVT & cvt)
 			b += img.at<cv::Vec3b>(pix.x, pix.y)[0];
 		}
 		float avg_v = floor(total * 1.0f/ cell.coverage.size());
-		r = floor(r / cell.coverage.size());
-		g = floor(g / cell.coverage.size());
-		b = floor(b / cell.coverage.size());
+		unsigned int r2 = floor(r / cell.coverage.size());
+		unsigned int g2 = floor(g / cell.coverage.size());
+		unsigned int b2 = floor(b / cell.coverage.size());
+        
+        unsigned int avgGray = floor((r + g + b) / (3 * cell.coverage.size()));
+        float combinedIntensity = static_cast<float>((1.0 * (r + g + b)) / cell.coverage.size());
 
 		//create a disk
 		HedcutDisk disk;
 		disk.center.x = cell.site.y; //x = col
 		disk.center.y = cell.site.x; //y = row
-		disk.color = cv::Scalar::all(0); //black
-     
+		/*
+		std::cout << "Disk Color Flag = " << diskColorFlag << ", Disk Color = [" <<
+            (int) diskColor.val[0] << ", " << (int) diskColor.val[1] << ", " << (int) diskColor.val[2] << "]" << std::endl;
+        */
+        
+        if(useAvgDiskColor) 
+        {
+            disk.color.val[0] = r2;
+            disk.color.val[1] = g2;
+            disk.color.val[2] = b2;
+            disk.color.val[3] = 0;
+        }
+        else if(useGrayscaleColor)
+        {
 
+            disk.color.val[0] = avgGray;
+            disk.color.val[1] = avgGray;
+            disk.color.val[2] = avgGray;
+            disk.color.val[3] = 0;
+        }
+        else if(diskColorFlag)
+        {
+            disk.color = cv::Scalar(diskColor);
+        }
+        else 
+        {
+            disk.color = cv::Scalar::all(0); //black
+        }
+        
         //disk.radius = 1; 
         float currentRadius = sqrt(1.0f * cell.coverage.size()) / 2;
+        float currentArea = static_cast<float>(cell.coverage.size());
+        float currentLogArea = static_cast<float>(log(log(currentArea + 1.0) + 1.0));
         
-        disk.radius = defaultRadius + (((maxRadius - currentRadius) / maxRadius) * diskScalingFactor);
+        //disk.radius = defaultRadius + (((maxRadius - currentRadius) / maxRadius) * diskScalingFactor);
+        //disk.radius = defaultRadius + (((maxArea - currentArea) / maxArea) * diskScalingFactor);
+        float totalAreaRange = maxArea - minArea;
+        float currentAdjustedArea = currentArea - minArea;
+        float areaZeroToOne = currentAdjustedArea / totalAreaRange;
+        
+        std::cout << "Computing Area. Range is " << minArea << " - " << maxArea << " (" << totalAreaRange << "), current = " << currentArea << ", zt1 value = " << areaZeroToOne << std::endl;
+        
+        
+        float totalIntensityRange = maxCellIntensity - minCellIntensity;
+        float currentAdjustedIntensity = combinedIntensity - minCellIntensity;
+        float intensityZeroToOne = currentAdjustedIntensity / totalIntensityRange;
+        
+        float calculatedDiskArea = 0.0f;
+        
+        if(areaScalingParamSet || intensityScalingParamSet)
+        {
+            if(defaultAreaParamSet)
+            {
+                calculatedDiskArea = defaultAreaParam;
+            }
+            
+            if(areaScalingParamSet)
+            {
+                if(areaScalingParam < 0.0f)
+                {
+                    calculatedDiskArea += ((1.0f - areaZeroToOne) * (areaScalingParam * -1.0f));
+                }
+                else
+                {
+                    calculatedDiskArea += (areaZeroToOne * areaScalingParam);
+                }
+            }
+            
+            std::cout << "Done Area Scaling. Param = " << areaScalingParam << ", final value = " << calculatedDiskArea << std::endl;
+            
+            if(intensityScalingParamSet)
+            {
+                if(intensityScalingParam < 0.0f)
+                {
+                    calculatedDiskArea += ((1.0f - intensityZeroToOne) * (intensityScalingParam * -1.0f));
+                }
+                else
+                {
+                    calculatedDiskArea += (intensityZeroToOne * intensityScalingParam);
+                }
+            }
+        }
+        else if(defaultAreaParamSet) 
+        {
+            calculatedDiskArea = defaultAreaParam;
+        }
+        else if(minAreaParamSet && maxAreaParamSet)
+        {
+            calculatedDiskArea = (minAreaParam + maxAreaParam) / 2.0f;
+        }
+        else if(minAreaParamSet)
+        {
+            calculatedDiskArea = minAreaParam;
+        }
+        else if(maxAreaParamSet)
+        {
+            calculatedDiskArea = maxAreaParam;
+        }
+        else
+        {
+            calculatedDiskArea = PI_VALUE;
+        }
+        
+        
+        //disk.radius = defaultRadius + (inverseSize * diskScalingFactor);
+        
+        
+        disk.radius = sqrt(calculatedDiskArea / PI_VALUE);
+        
+        std::cout << "Radius = " << disk.radius << ", Area  was: " << calculatedDiskArea << std::endl;
+        
         //sqrt(cell.coverage.size() * 1.0f) / 3;
         
-        std::cout << "Output radius = " << disk.radius << ", disk radius (actual) = " << currentRadius <<
-            ", diskScalingFactor = " << diskScalingFactor << std::endl;
+        //std::cout << "Output radius = " << disk.radius << ", disk radius (actual) = " << currentRadius <<
+        //    ", diskScalingFactor = " << diskScalingFactor << std::endl;
 
 		//remember
-		this->disks.push_back(disk);
-
-	}//end for cell
+        diskVector.push_back(disk);
+		//this->disks.push_back(disk);
+	} //end for cell
+	
+	std::cout << "Reg Set " << regularizationParamSet << ", Area Scaling Set " << areaScalingParamSet << ", intensityScalingParamSet " << intensityScalingParamSet << std::endl;
+	
+    if(regularizationParamSet && (areaScalingParamSet || intensityScalingParamSet))
+    {
+        //std::cout << "Max disk radius (actual) = " << maxRadius << std::endl;
+        //SortableFloat* sfArray;
+        //sfArray = new SortableFloat[cvt.getCells().size()];
+        std::vector<SortableFloat> diskRadiusValues;
+        float maxDiskRadius;
+        float minDiskRadius;
+        bool firstRecord = true;
+                
+        for(int i = 0; i < diskVector.size(); i++)
+        {
+            float currentDiskRadius = diskVector[i].radius;
+            
+            if(firstRecord)
+            {
+                maxDiskRadius = currentDiskRadius;
+                minDiskRadius = currentDiskRadius;
+                firstRecord = false;
+            }
+            else
+            {
+                if(currentDiskRadius > maxDiskRadius)
+                {
+                    maxDiskRadius = currentDiskRadius;
+                }
+                
+                if(currentDiskRadius < minDiskRadius)
+                {
+                    minDiskRadius = currentDiskRadius;
+                }
+            }
+            
+            // This is a test from Will
+            SortableFloat myRecord;
+            myRecord.id = i;
+            myRecord.value = currentDiskRadius;
+            diskRadiusValues.push_back(myRecord);
+        }
+        
+        std::cout << "Sorted. Min = " << minDiskRadius << ", Max = " << maxDiskRadius << std::endl;
+        
+        if(maxDiskRadius > minDiskRadius)
+        {
+            std::sort(diskRadiusValues.begin(), diskRadiusValues.end(), compareSortableFloat);
+            float radiusRange = maxDiskRadius - minDiskRadius;
+            
+            for(int i = 0; i < diskRadiusValues.size(); i++)
+            {
+                SortableFloat sfi = diskRadiusValues[i];
+                float oldRadius = sfi.value;
+                float targetRadius = minDiskRadius + ((radiusRange / (diskRadiusValues.size() - 1)) * i);
+                float delta = targetRadius - oldRadius;
+                
+                float newRadius = oldRadius + regularizationParam * delta;
+                diskVector[sfi.id].radius = newRadius;
+                std::cout << "Regularizing!! Range = " << minDiskRadius << " - " << maxDiskRadius << ", oldRadius = " << oldRadius << ", id = " << sfi.id << 
+                    ", sorted rank = " << i << " / " << diskRadiusValues.size() - 1 << ", new radius = " << newRadius << std::endl;
+            }
+        }
+    }
+    
+    if(minAreaParamSet || maxAreaParamSet)
+    {
+        float smallestPossibleDiskRadius = 0.0f;
+        float largestPossibleDiskRadius = 1000.0f;
+        
+        if(minAreaParamSet) 
+        {
+            smallestPossibleDiskRadius = sqrt(max(minAreaParam, 0.0f) / PI_VALUE);
+        }
+        
+        if(maxAreaParamSet)
+        {
+            largestPossibleDiskRadius = sqrt(max(maxAreaParam, 0.0f) / PI_VALUE);
+        }
+        
+        // Clamp into [MIN ... MAX]
+        for(auto &diskRef : diskVector)
+        {
+            if(minAreaParamSet) 
+            {
+                diskRef.radius = max(diskRef.radius, smallestPossibleDiskRadius);
+            }
+            
+            if(maxAreaParamSet)
+            {
+                diskRef.radius = min(diskRef.radius, largestPossibleDiskRadius);
+            }
+        }
+    }
+    
+    for(auto &diskRef : diskVector) 
+    {
+        this->disks.push_back(diskRef);
+    }
 
 	//done
 }
