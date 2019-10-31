@@ -245,8 +245,11 @@ void CVT::compute_weighted_cvt(cv::Mat &  img, std::vector<cv::Point2d> & sites)
             vorGPU.refreshVoronoiDiagram(vorDiagram);
             updateCoverageForVorGPU(vorDiagram);
             
-            cv::imshow("OpenGL Voronoi Diagram", vorDiagram);
-            cv::waitKey(5);
+            if(debug)
+            {     
+                cv::imshow("OpenGL Voronoi Diagram", vorDiagram);
+                cv::waitKey(5);
+            }
         }
         else 
         {

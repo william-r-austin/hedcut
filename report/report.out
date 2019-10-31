@@ -1,0 +1,8 @@
+\BOOKMARK [1][-]{section.1}{Summary of the hedcut method}{}% 1
+\BOOKMARK [1][-]{section.2}{Improvement of hedcuter method}{}% 2
+\BOOKMARK [2][-]{subsection.2.1}{Creating Voronoi Diagrams using OpenGL}{section.2}% 3
+\BOOKMARK [2][-]{subsection.2.2}{Colored Disks, Grayscale Disks, and Background Color}{section.2}% 4
+\BOOKMARK [2][-]{subsection.2.3}{Disk Sizing based on Cell Area and Intensity, with Regularization}{section.2}% 5
+\BOOKMARK [2][-]{subsection.2.4}{More Dynamic Initial Sampling}{section.2}% 6
+\BOOKMARK [2][-]{subsection.2.5}{Edge Detection}{section.2}% 7
+\BOOKMARK [1][-]{section.3}{Conclusion}{}% 8
